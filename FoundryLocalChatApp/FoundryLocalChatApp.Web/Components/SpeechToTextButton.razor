@@ -1,0 +1,83 @@
+﻿@inject ISpeechRecognitionService SpeechRecognition
+@implements IDisposable
+
+@if (!isRecording)
+{
+    <button type="button" @onclick="OnRecord" class="mic-button" title="Start voice to text">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="tool-icon">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.25v2.25m0 0h3m-3 0H9m6-6a3 3 0 01-6 0V7a3 3 0 016 0v7.25z" />
+        </svg>
+    </button>
+}
+else
+{
+    <button type="button" @onclick="OnStopRecording" class="mic-button" title="Stop voice to text">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" class="tool-icon">
+            <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+    </button>
+}
+
+@code {
+    IDisposable? _recognitionSubscription;
+    bool isRecording;
+
+    [Parameter]
+    public EventCallback<string> OnRecognizedText { get; set; }
+
+    Task OnRecognized(string recognizedText) =>
+        OnRecognizedText.InvokeAsync(recognizedText);
+
+    async Task OnRecord()
+    {
+        if (isRecording)
+            await SpeechRecognition.CancelSpeechRecognitionAsync(true);
+        _recognitionSubscription?.Dispose();
+        _recognitionSubscription = await SpeechRecognition.RecognizeSpeechAsync(
+            language: "en",
+            onError: OnError,
+            onRecognized: OnRecognized,
+            onStarted: OnStarted,
+            onEnded: OnEnded);
+    }
+
+    async Task OnStopRecording() =>
+        await SpeechRecognition.CancelSpeechRecognitionAsync(true);
+
+    Task OnEnded()
+    {
+        isRecording = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    Task OnStarted()
+    {
+        isRecording = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    Task OnError(SpeechRecognitionErrorEvent args)
+    {
+        switch (args.Error)
+        {
+            case "audio-capture":
+            case "network":
+            case "not-allowed":
+            case "service-not-allowed":
+            case "bad-grammar":
+            case "language-not-supported":
+                throw new Exception($"Speech recognition error: {args.Message}");
+            case "no-speech":
+            case "aborted":
+                break;
+        }
+        ;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() =>
+        _recognitionSubscription?.Dispose();
+}

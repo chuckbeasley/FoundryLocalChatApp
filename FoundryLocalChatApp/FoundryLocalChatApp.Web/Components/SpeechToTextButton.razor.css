@@ -1,0 +1,14 @@
+﻿.tool-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.mic-button {
+    color: var(--send-button-color);
+    margin-left: 0;
+    cursor: pointer;
+}
+
+    .mic-button:hover {
+        color: black;
+    }

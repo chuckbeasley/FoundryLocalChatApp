@@ -1,0 +1,34 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8DF2C82B-17EB-46EF-8181-CAF96C3DF859}") = "FoundryLocalChatApp.AppHost", "FoundryLocalChatApp.AppHost\FoundryLocalChatApp.AppHost.csproj", "{7E815AE1-FC44-41FF-9E11-5D23F9F8B9FF}"
+EndProject
+Project("{8DF2C82B-17EB-46EF-8181-CAF96C3DF859}") = "FoundryLocalChatApp.ServiceDefaults", "FoundryLocalChatApp.ServiceDefaults\FoundryLocalChatApp.ServiceDefaults.csproj", "{5E6C7968-63B4-469B-BD63-74EBA1BFA8CB}"
+EndProject
+Project("{8DF2C82B-17EB-46EF-8181-CAF96C3DF859}") = "FoundryLocalChatApp.Web", "FoundryLocalChatApp.Web\FoundryLocalChatApp.Web.csproj", "{D446C938-8FC7-4E0B-A36A-76ED1832DEBC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7E815AE1-FC44-41FF-9E11-5D23F9F8B9FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E815AE1-FC44-41FF-9E11-5D23F9F8B9FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E815AE1-FC44-41FF-9E11-5D23F9F8B9FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E815AE1-FC44-41FF-9E11-5D23F9F8B9FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E6C7968-63B4-469B-BD63-74EBA1BFA8CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E6C7968-63B4-469B-BD63-74EBA1BFA8CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E6C7968-63B4-469B-BD63-74EBA1BFA8CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E6C7968-63B4-469B-BD63-74EBA1BFA8CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D446C938-8FC7-4E0B-A36A-76ED1832DEBC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D446C938-8FC7-4E0B-A36A-76ED1832DEBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D446C938-8FC7-4E0B-A36A-76ED1832DEBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D446C938-8FC7-4E0B-A36A-76ED1832DEBC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
