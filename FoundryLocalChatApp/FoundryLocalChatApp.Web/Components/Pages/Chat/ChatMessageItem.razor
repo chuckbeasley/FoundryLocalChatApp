@@ -24,6 +24,10 @@ else if (Message.Role == ChatRole.Assistant)
                 </div>
                 <div class="assistant-message-header">Assistant</div>
                 <div class="assistant-message-text">
+                    @if (!InProgress)
+                    {
+                        <TextToSpeechButton Text="@text" />
+                    }
                     <assistant-message markdown="@text"></assistant-message>
                 </div>
             </div>

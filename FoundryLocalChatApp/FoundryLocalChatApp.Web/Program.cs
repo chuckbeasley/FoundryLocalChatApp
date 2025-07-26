@@ -16,9 +16,16 @@ if (!cachedModels.Any(m => m.Alias == "Phi-4-mini-instruct-generic-cpu"))
 await manager.LoadModelAsync("Phi-4-mini-instruct-generic-cpu");
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddConsole();
 builder.AddServiceDefaults();
-builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents(options =>
+    {
+        options.DetailedErrors = true;
+    });
 builder.Services.AddSpeechRecognitionServices();
+builder.Services.AddSpeechSynthesisServices();
+builder.Services.AddMemoryCache();
 
 builder.AddOpenAIClient(
             connectionName: "foundryLocal",

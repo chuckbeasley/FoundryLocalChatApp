@@ -1,0 +1,38 @@
+:root {
+    --send-button-color: #aaa;
+}
+
+.tool-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.speaker-button {
+    color: #aaa;
+    margin-left: 0;
+    cursor: pointer;
+}
+
+    .speaker-button:hover {
+        color: black;
+    }
+
+.play-button {
+    color: #aaa;
+    margin-left: 0;
+    cursor: pointer;
+}
+
+    .play-button:hover {
+        color: black;
+    }
+
+.pause-button {
+    color: #aaa;
+    margin-left: 0;
+    cursor: pointer;
+}
+
+    .pause-button:hover {
+        color: black;
+    }
