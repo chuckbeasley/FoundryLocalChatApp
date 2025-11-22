@@ -1,12 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
 using Betalgo.Ranul.OpenAI.ObjectModels.ResponseModels;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.AI;
+using System.Runtime.CompilerServices;
 
 namespace FoundryLocalChatApp.Web.Services
 {

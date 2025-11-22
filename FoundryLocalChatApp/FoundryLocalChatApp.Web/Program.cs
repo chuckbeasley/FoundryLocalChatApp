@@ -3,8 +3,6 @@ using FoundryLocalChatApp.Web.Services;
 using FoundryLocalChatApp.Web.Services.Ingestion;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.DependencyInjection;
-using System.Diagnostics;
 
 // Create a logger for the Foundry manager
 var loggerFactory = LoggerFactory.Create(lb => lb.AddConsole());
@@ -22,7 +20,7 @@ var config = new Configuration
 await FoundryLocalManager.CreateAsync(config, flLogger);
 
 // Get the singleton instance
-var manager = FoundryLocalManager.Instance; 
+var manager = FoundryLocalManager.Instance;
 var catalog = await manager.GetCatalogAsync();
 var models = await catalog.GetCachedModelsAsync();
 Model? model = await catalog.GetModelAsync("phi-4-mini");
@@ -40,7 +38,7 @@ if (cached is null)
         "Install the model (Foundry tooling) or place the model files under the cache directory.");
 }
 
-string modelPath = await model.GetPathAsync();  
+string modelPath = await model.GetPathAsync();
 await model.LoadAsync();
 OpenAIChatClient chatClient = await model.GetChatClientAsync();
 var builder = WebApplication.CreateBuilder(args);

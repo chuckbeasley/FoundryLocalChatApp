@@ -1,4 +1,3 @@
-using System;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.AI;
 
