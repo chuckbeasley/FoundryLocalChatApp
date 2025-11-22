@@ -130,7 +130,10 @@ namespace FoundryLocalChatApp.Web.Services
                         }
 
                         var choiceText = choice.ToString();
-                        if (!string.IsNullOrEmpty(choiceText)) textParts.Add(choiceText);
+                        if (!string.IsNullOrEmpty(choiceText))
+                        {
+                            textParts.Add(choiceText);
+                        }
                     }
                     catch { }
                 }
