@@ -8,34 +8,32 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Services\**" />
-    <Content Remove="Services\**" />
-    <EmbeddedResource Remove="Services\**" />
-    <None Remove="Services\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Remove="Components\Pages\Chat\ChatCitation.razor" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Components\Pages\Chat\ChatCitation.razor.css" />
-  </ItemGroup>
-
-  <ItemGroup>
-	  <PackageReference Include="Aspire.Azure.AI.OpenAI" Version="9.3.0-preview.1.25265.20" />
-	  <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="9.5.0-preview.1.25265.7" />
-	  <PackageReference Include="Microsoft.Extensions.AI" Version="9.5.0" />
-	  <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.53.0" />
-	  <PackageReference Include="PdfPig" Version="0.1.10" />
-	  <PackageReference Include="System.Linq.Async" Version="6.0.1" />
-	  <PackageReference Include="Microsoft.AI.Foundry.Local" Version="0.1.0" />
+	  <PackageReference Include="Aspire.Azure.AI.OpenAI" Version="13.0.0-preview.1.25560.3" />
+	  <PackageReference Include="Aspire.Hosting.AppHost" Version="13.0.0" />
+	  <PackageReference Include="Aspire.Qdrant.Client" Version="13.0.0" />
+	  <PackageReference Include="Microsoft.ML.OnnxRuntime.Foundry" Version="1.23.2" />
+	  <PackageReference Include="PdfPig" Version="0.1.13-alpha-20251115-aef0a" />
+	  <PackageReference Include="System.Linq.Async" Version="7.0.0-preview.14" />
 	  <PackageReference Include="Blazor.SpeechRecognition" Version="9.0.1" />
 	  <PackageReference Include="Blazor.SpeechSynthesis" Version="9.0.1" />
+	  <PackageReference Include="Microsoft.AI.Foundry.Local" Version="0.8.2.1" />
+	  <PackageReference Include="Microsoft.SemanticKernel.Connectors.Qdrant" Version="1.67.1-preview" />
+	  <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.0.0-preview.1.25560.10" />
+	  <PackageReference Include="Microsoft.Extensions.AI" Version="10.0.0" />
+	  <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.67.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FoundryLocalChatApp.ServiceDefaults\FoundryLocalChatApp.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\Models\bge-large-en-v1.5\onnx\model.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\Models\bge-large-en-v1.5\vocab.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
