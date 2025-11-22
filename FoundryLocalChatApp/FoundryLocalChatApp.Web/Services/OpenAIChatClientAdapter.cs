@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Betalgo.Ranul.OpenAI.ObjectModels.ResponseModels;
@@ -33,31 +34,10 @@ namespace FoundryLocalChatApp.Web.Services
             // Build Betalgo request message instances via reflection to avoid compile-time type mismatch
             var betalgoArray = CreateBetalgoMessagesArray(messages);
 
-            // Call inner dynamically
-            dynamic dynInner = _inner;
-            var raw = await dynInner.CompleteChatAsync(betalgoArray, cancellationToken);
+            var rawResponse = await _inner.CompleteChatAsync(betalgoArray, cancellationToken);
 
-            // If inner already returned Microsoft ChatResponse, return it
-            if (raw is ChatResponse chatResp)
-            {
-                return chatResp;
-            }
 
-            // If inner returned Betalgo response, map it
-            if (raw is ChatCompletionCreateResponse betalgo)
-            {
-                return MapBetalgoToChatResponse(betalgo);
-            }
-
-            // Fallback
-            var text = raw?.ToString() ?? string.Empty;
-            var message = new ChatMessage(ChatRole.Assistant, text);
-            var response = new ChatResponse(message)
-            {
-                RawRepresentation = raw
-            };
-
-            return response;
+            return MapBetalgoToChatResponse(rawResponse);
         }
 
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
@@ -68,18 +48,8 @@ namespace FoundryLocalChatApp.Web.Services
             ApplySettingsToInner(settings);
 
             var betalgoArray = CreateBetalgoMessagesArray(messages);
-
-            dynamic dynInner = _inner;
-            try
-            {
-                var stream = dynInner.CompleteChatStreamingAsync(betalgoArray, cancellationToken);
-                return ConvertDynamicStream(stream, cancellationToken);
-            }
-            catch (Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
-            {
-                var stream = dynInner.CompleteChatStreamingAsync(betalgoArray);
-                return ConvertDynamicStream(stream, cancellationToken);
-            }
+            IAsyncEnumerable<ChatCompletionCreateResponse> stream = _inner.CompleteChatStreamingAsync(betalgoArray, cancellationToken);
+            return ConvertStream(stream, cancellationToken);
         }
 
         public object? GetService(Type serviceType, object? serviceKey = null)
@@ -166,8 +136,11 @@ namespace FoundryLocalChatApp.Web.Services
                 }
             }
 
-            var text = string.Join(string.Empty, textParts).Trim();
-            if (string.IsNullOrEmpty(text)) text = raw.ToString() ?? string.Empty;
+            var text = string.Join(" ", textParts);
+            if (string.IsNullOrEmpty(text))
+            {
+                text = raw.ToString() ?? string.Empty;
+            }
 
             var message = new ChatMessage(ChatRole.Assistant, text);
             var response = new ChatResponse(message)
@@ -178,149 +151,76 @@ namespace FoundryLocalChatApp.Web.Services
             return response;
         }
 
-        private static Array CreateBetalgoMessagesArray(IEnumerable<ChatMessage> messages)
+        private static IEnumerable<Betalgo.Ranul.OpenAI.ObjectModels.RequestModels.ChatMessage> CreateBetalgoMessagesArray(IEnumerable<ChatMessage> messages)
         {
-            // Create instances of the Betalgo request ChatMessage type at runtime
-            var respAsm = typeof(ChatCompletionCreateResponse).Assembly;
-            var requestType = respAsm.GetType("Betalgo.Ranul.OpenAI.ObjectModels.RequestModels.ChatMessage");
-            if (requestType is null)
-            {
-                // Fallback: return an empty object[] if type cannot be found
-                return Array.Empty<object>();
-            }
+            if (messages is null) throw new ArgumentNullException(nameof(messages));
 
             var list = messages.ToList();
-            var arr = Array.CreateInstance(requestType, list.Count);
+
+            // Create a strongly typed array of Betalgo request messages.
+            // This avoids reflection and relies on the Betalgo request model being
+            // available at compile-time: Betalgo.Ranul.OpenAI.ObjectModels.RequestModels.ChatMessage
+            var result = new Betalgo.Ranul.OpenAI.ObjectModels.RequestModels.ChatMessage[list.Count];
 
             for (int i = 0; i < list.Count; i++)
             {
                 var ms = list[i];
-                var inst = Activator.CreateInstance(requestType) ?? throw new InvalidOperationException("Unable to create Betalgo request message instance");
 
-                // Try to set textual content properties
-                foreach (var p in requestType.GetProperties())
+                // Construct the Betalgo request ChatMessage directly.
+                // The typical Betalgo request model exposes string Content and string Role.
+                // If the Betalgo model uses an enum for Role, update this assignment accordingly.
+                var bm = new Betalgo.Ranul.OpenAI.ObjectModels.RequestModels.ChatMessage
                 {
-                    try
-                    {
-                        var name = p.Name.ToLowerInvariant();
-                        if (p.PropertyType == typeof(string) && (name.Contains("content") || name.Contains("text") || name.Contains("message")))
-                        {
-                            p.SetValue(inst, ms.Text);
-                            continue;
-                        }
+                    Content = ms.Text,
+                    Role = ms.Role.ToString().ToLowerInvariant()
+                };
 
-                        // Try to set role/author if available
-                        if ((name == "role" || name == "author" || name == "authorname") )
-                        {
-                            if (p.PropertyType == typeof(string))
-                            {
-                                p.SetValue(inst, ms.Role.ToString().ToLowerInvariant());
-                            }
-                            else if (p.PropertyType.IsEnum)
-                            {
-                                try
-                                {
-                                    var enumVal = Enum.Parse(p.PropertyType, ms.Role.ToString(), true);
-                                    p.SetValue(inst, enumVal);
-                                }
-                                catch { }
-                            }
-                        }
-                    }
-                    catch { }
-                }
-
-                arr.SetValue(inst, i);
+                result[i] = bm;
             }
 
-            return arr;
+            return result;
         }
 
-        private static async IAsyncEnumerable<ChatResponseUpdate> ConvertDynamicStream(dynamic stream, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        private static async IAsyncEnumerable<ChatResponseUpdate> ConvertStream(IAsyncEnumerable<ChatCompletionCreateResponse> stream, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            // Use dynamic enumerator to iterate unknown IAsyncEnumerable at runtime
-            var enumerator = ((object)stream).GetType().GetMethod("GetAsyncEnumerator", new[] { typeof(CancellationToken) })?.Invoke(stream, new object[] { cancellationToken });
-            if (enumerator is null)
+            await foreach (var berc in stream.WithCancellation(cancellationToken))
             {
-                yield break;
-            }
-
-            try
-            {
-                while (true)
+                // Map betalgo incremental response (no reflection; use ToString fallbacks)
+                var textParts = new List<string>();
+                if (berc.Choices is { Count: > 0 } choices)
                 {
-                    // MoveNextAsync()
-                    var moveNextMethod = enumerator.GetType().GetMethod("MoveNextAsync", Type.EmptyTypes);
-                    if (moveNextMethod is null) yield break;
-
-                    var moveTask = moveNextMethod.Invoke(enumerator, null);
-                    // Await the returned ValueTask<bool>
-                    var moveResult = await ((dynamic)moveTask);
-                    if (!(moveResult is bool moved) || !moved) break;
-
-                    // Get Current
-                    var currentProp = enumerator.GetType().GetProperty("Current");
-                    var current = currentProp?.GetValue(enumerator);
-
-                    if (current is ChatCompletionCreateResponse berc)
+                    foreach (var choice in choices)
                     {
-                        // Map betalgo incremental response
-                        var textParts = new List<string>();
-                        if (berc.Choices is { Count: > 0 } choices)
+                        try
                         {
-                            foreach (var choice in choices)
+                            var msg = choice.Message;
+                            if (msg is not null)
                             {
-                                try
+                                var asString = msg.Content;
+                                if (!string.IsNullOrEmpty(asString))
                                 {
-                                    var msg = choice.Message;
-                                    if (msg is not null)
-                                    {
-                                        var contentProp = msg.GetType().GetProperty("Content");
-                                        if (contentProp is not null)
-                                        {
-                                            var contentVal = contentProp.GetValue(msg);
-                                            if (contentVal is string s)
-                                            {
-                                                textParts.Add(s);
-                                                continue;
-                                            }
-                                        }
-                                        textParts.Add(msg.ToString() ?? string.Empty);
-                                    }
-                                    else
-                                    {
-                                        textParts.Add(choice.ToString());
-                                    }
+                                    textParts.Add(asString);
+                                    continue;
                                 }
-                                catch { }
+                            }
+
+                            var choiceText = choice.ToString();
+                            if (!string.IsNullOrEmpty(choiceText))
+                            {
+                                textParts.Add(choiceText);
                             }
                         }
-
-                        var text = string.Join(string.Empty, textParts).Trim();
-                        if (string.IsNullOrEmpty(text)) text = berc.ToString() ?? string.Empty;
-
-                        yield return new ChatResponseUpdate(ChatRole.Assistant, text) { RawRepresentation = berc };
-                    }
-                    else if (current is ChatResponseUpdate cru)
-                    {
-                        yield return cru;
-                    }
-                    else
-                    {
-                        var txt = current?.ToString() ?? string.Empty;
-                        yield return new ChatResponseUpdate(ChatRole.Assistant, txt) { RawRepresentation = current };
+                        catch { }
                     }
                 }
-            }
-            finally
-            {
-                // Dispose async enumerator if possible
-                var disposeAsync = enumerator.GetType().GetMethod("DisposeAsync", Type.EmptyTypes);
-                if (disposeAsync is not null)
+
+                var text = string.Join(" ", textParts);
+                if (string.IsNullOrEmpty(text))
                 {
-                    var dispTask = disposeAsync.Invoke(enumerator, null);
-                    if (dispTask is not null) await ((dynamic)dispTask);
+                    text = berc.ToString() ?? string.Empty;
                 }
+
+                yield return new ChatResponseUpdate(ChatRole.Assistant, text) { RawRepresentation = berc };
             }
         }
     }
