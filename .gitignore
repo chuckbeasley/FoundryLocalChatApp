@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/FoundryLocalChatApp/FoundryLocalChatApp.Web/wwwroot/Models/bge-large-en-v1.5
+/FoundryLocalChatApp/FoundryLocalChatApp.Web/wwwroot/Models/bge-large-en-v1.5/onnx/model.onnx
+/FoundryLocalChatApp/FoundryLocalChatApp.Web/wwwroot/Models/bge-large-en-v1.5/vocab.txt
