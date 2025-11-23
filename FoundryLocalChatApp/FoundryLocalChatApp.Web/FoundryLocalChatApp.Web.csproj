@@ -12,6 +12,8 @@
 	  <PackageReference Include="Aspire.Hosting.AppHost" Version="13.0.0" />
 	  <PackageReference Include="Aspire.Qdrant.Client" Version="13.0.0" />
 	  <PackageReference Include="Microsoft.ML.OnnxRuntime.Foundry" Version="1.23.2" />
+	  <PackageReference Include="Microsoft.SemanticKernel" Version="1.67.1" />
+	  <PackageReference Include="Microsoft.SemanticKernel.Connectors.Onnx" Version="1.67.1-alpha" />
 	  <PackageReference Include="PdfPig" Version="0.1.13-alpha-20251115-aef0a" />
 	  <PackageReference Include="System.Linq.Async" Version="7.0.0-preview.14" />
 	  <PackageReference Include="Blazor.SpeechRecognition" Version="9.0.1" />

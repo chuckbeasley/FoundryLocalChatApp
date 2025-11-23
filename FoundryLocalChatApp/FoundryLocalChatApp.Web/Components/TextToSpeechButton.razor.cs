@@ -4,7 +4,7 @@ using Microsoft.JSInterop;
 
 namespace FoundryLocalChatApp.Web.Components;
 
-public partial class TextToSpeechButton : IDisposable
+public sealed partial class TextToSpeechButton : IDisposable
 {
     [Parameter]
     public string? Text { get; set; }

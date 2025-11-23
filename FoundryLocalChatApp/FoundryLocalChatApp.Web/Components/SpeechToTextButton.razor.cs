@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace FoundryLocalChatApp.Web.Components;
 
-public partial class SpeechToTextButton : IDisposable
+public sealed partial class SpeechToTextButton : IDisposable
 {
     IDisposable? _recognitionSubscription;
     bool isRecording;

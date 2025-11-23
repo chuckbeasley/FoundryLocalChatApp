@@ -3,6 +3,7 @@ using FoundryLocalChatApp.Web.Services;
 using FoundryLocalChatApp.Web.Services.Ingestion;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.AI;
+using Microsoft.SemanticKernel;
 
 // Create a logger for the Foundry manager
 var loggerFactory = LoggerFactory.Create(lb => lb.AddConsole());
@@ -28,20 +29,13 @@ if (model is null)
 {
     throw new InvalidOperationException("Model 'phi-4-mini' not found in catalog.");
 }
-var cached = (await catalog.GetCachedModelsAsync())
-    .FirstOrDefault(v => v.Id == model.Id || v.Alias == model.Alias);
-
-if (cached is null)
-{
-    throw new InvalidOperationException(
-        $"Model '{model.Id}' is not installed in the cache at '{config.ModelCacheDir}'. " +
-        "Install the model (Foundry tooling) or place the model files under the cache directory.");
-}
-
-string modelPath = await model.GetPathAsync();
 await model.LoadAsync();
 OpenAIChatClient chatClient = await model.GetChatClientAsync();
 var builder = WebApplication.CreateBuilder(args);
+
+//IKernelBuilder kernelBuilder = Kernel.CreateBuilder();
+var onnxModelPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "Models", "bge-large-en-v1.5", "onnx", "model.onnx");
+var onnxVocabPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "Models", "bge-large-en-v1.5", "vocab.txt");
 builder.Logging.AddConsole();
 builder.AddServiceDefaults();
 builder.Services.AddRazorComponents()
@@ -52,9 +46,18 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSpeechRecognitionServices();
 builder.Services.AddSpeechSynthesisServices();
 builder.Services.AddMemoryCache();
-// register the adapter that implements IChatClient
-builder.Services.AddSingleton<IChatClient>(sp => new OpenAIChatClientAdapter(chatClient));
+builder.Services.AddBertOnnxEmbeddingGenerator(onnxModelPath, onnxVocabPath);
 
+// register the adapter that implements IChatClient
+builder.Services.AddSingleton<IChatClient>(sp =>
+{
+    // Base adapter around the Foundry OpenAIChatClient
+    using var adapter = new OpenAIChatClientAdapter(chatClient);
+
+    var loggerFactoryForAI = sp.GetService<ILoggerFactory>();
+    var functionInvoker = new FunctionInvokingChatClient(adapter, loggerFactoryForAI, sp);
+    return functionInvoker;
+});
 builder.AddQdrantClient("vectordb");
 builder.Services.AddQdrantCollection<Guid, IngestedChunk>("data-blazorchat-chunks");
 builder.Services.AddQdrantCollection<Guid, IngestedDocument>("data-blazorchat-documents");
@@ -79,4 +82,12 @@ app.UseStaticFiles();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+// Find the registered embedding generator service
+var embeddingGenerator = app.Services.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+
+await DataIngestor.IngestDataAsync(
+    app.Services,
+    new PDFDirectorySource(
+        Path.Combine(builder.Environment.WebRootPath, "Data"),
+        embeddingGenerator));
 app.Run();

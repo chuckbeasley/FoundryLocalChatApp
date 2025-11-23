@@ -1,7 +1,9 @@
 ﻿@page "/"
 @using System.ComponentModel
+@using FoundryLocalChatApp.Web.Services
 @inject IChatClient ChatClient
 @inject NavigationManager Nav
+@inject SemanticSearch Search
 @implements IDisposable
 
 <PageTitle>Chat</PageTitle>
@@ -10,7 +12,9 @@
 
 <ChatMessageList Messages="@messages" InProgressMessage="@currentResponseMessage">
     <NoMessagesContent>
-        <div>Ask me anything.</div>
+        <div>To get started, try asking about these example documents. You can replace these with your own data and replace this message.</div>
+        <ChatCitation File="Example_Emergency_Survival_Kit.pdf" />
+        <ChatCitation File="Example_GPS_Watch.pdf" />
     </NoMessagesContent>
 </ChatMessageList>
 
@@ -21,11 +25,22 @@
 
 @code {
     private const string SystemPrompt = @"
-        You are an assistant who answers questions.
+        You are an assistant who answers questions about information you retrieve.
+        Do not answer questions about anything else.
         Use only simple markdown to format your responses.
-    ";
 
-    private const int CONTEXT_LENGTH = 128 * 1024;
+        Use the search tool to find relevant information. When you do this, end your
+        reply with citations in the special XML format:
+
+        <citation filename='string' page_number='number'>exact quote here</citation>
+
+        Always include the citation in your response if there are results.
+
+        The quote must be max 5 words, taken word-for-word from the search result, and is the basis for why the citation is relevant.
+        Don't refer to the presence of citations; just emit these tags right at the end, with no surrounding text.
+        ";
+
+    //private const int CONTEXT_LENGTH = 128 * 1024;
     private readonly ChatOptions chatOptions = new();
     private readonly List<ChatMessage> messages = new();
     private CancellationTokenSource? currentResponseCancellation;
@@ -36,8 +51,9 @@
     protected override void OnInitialized()
     {
         messages.Add(new(ChatRole.System, SystemPrompt));
-        chatOptions.MaxOutputTokens = CONTEXT_LENGTH;
-        chatOptions.Temperature = 0.7f;
+        chatOptions.Tools = [AIFunctionFactory.Create(SearchAsync)];
+        //chatOptions.MaxOutputTokens = CONTEXT_LENGTH;
+        //chatOptions.Temperature = 0.7f;
     }
 
     private async Task AddUserMessageAsync(ChatMessage userMessage)
@@ -58,6 +74,7 @@
         await foreach (var update in ChatClient.GetStreamingResponseAsync([.. messages], chatOptions, currentResponseCancellation.Token))
         {
             messages.AddMessages(update, filter: c => c is not TextContent);
+            //messages.AddMessages(update);
             responseText.Text += update.Text;
             ChatMessageItem.NotifyChanged(currentResponseMessage);
             StateHasChanged(); // Update the UI with the new response text
@@ -65,7 +82,10 @@
 
         // Store the final response in the conversation, and begin getting suggestions
         messages.Add(currentResponseMessage!);
-        await chatSuggestions?.Update(messages);
+        if (chatSuggestions is not null)
+        {
+            await chatSuggestions.Update(messages);
+        }
         currentResponseMessage = null;
     }
 
@@ -89,7 +109,18 @@
         chatSuggestions?.Clear();
         await chatInput!.FocusAsync();
     }
-        
+
+    [Description("Searches for information using a phrase or keyword")]
+    private async Task<IEnumerable<string>> SearchAsync(
+        [Description("The phrase to search for.")] string searchPhrase,
+        [Description("If possible, specify the filename to search that file only. If not provided or empty, the search includes all files.")] string? filenameFilter = null)
+    {
+        await InvokeAsync(StateHasChanged);
+        var results = await Search.SearchAsync(searchPhrase, filenameFilter, maxResults: 5);
+        return results.Select(result =>
+            $"<result filename=\"{result.DocumentId}\" page_number=\"{result.PageNumber}\">{result.Text}</result>");
+    }
+
     public void Dispose()
         => currentResponseCancellation?.Cancel();
 }

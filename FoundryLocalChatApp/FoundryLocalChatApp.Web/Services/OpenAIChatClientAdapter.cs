@@ -2,6 +2,7 @@ using Betalgo.Ranul.OpenAI.ObjectModels.ResponseModels;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.AI;
 using System.Runtime.CompilerServices;
+using static FoundryLocalChatApp.Web.Services.ChatOptionsMapper;
 
 namespace FoundryLocalChatApp.Web.Services
 {
@@ -71,7 +72,7 @@ namespace FoundryLocalChatApp.Web.Services
             return null;
         }
 
-        private void ApplySettingsToInner(OpenAIChatClient.ChatSettings settings)
+        private void ApplySettingsToInner(ExtendedChatSettings settings)
         {
             if (settings is null) return;
 
@@ -85,6 +86,8 @@ namespace FoundryLocalChatApp.Web.Services
                 _inner.Settings.RandomSeed = settings.RandomSeed;
                 _inner.Settings.TopK = settings.TopK;
                 _inner.Settings.TopP = settings.TopP;
+                //_inner.Settings.ToolMode = settings.ToolMode;
+                //_inner.Settings.AllowMultipleToolCalls = settings.AllowMultipleToolCalls;
             }
             catch
             {

@@ -1,4 +1,5 @@
-﻿using Microsoft.SemanticKernel.Text;
+﻿using Microsoft.Extensions.AI;
+using Microsoft.SemanticKernel.Text;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
@@ -6,7 +7,7 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
 
 namespace FoundryLocalChatApp.Web.Services.Ingestion;
 
-public class PDFDirectorySource(string sourceDirectory) : IIngestionSource
+public class PDFDirectorySource(string sourceDirectory, IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator) : IIngestionSource
 {
     public static string SourceFileId(string path) => Path.GetFileName(path);
     public static string SourceFileVersion(string path) => File.GetLastWriteTimeUtc(path).ToString("o");
@@ -52,6 +53,7 @@ public class PDFDirectorySource(string sourceDirectory) : IIngestionSource
             DocumentId = document.DocumentId,
             PageNumber = p.PageNumber,
             Text = p.Text,
+            Vector = embeddingGenerator.GenerateVectorAsync(p.Text).GetAwaiter().GetResult().ToArray()
         }));
     }
 

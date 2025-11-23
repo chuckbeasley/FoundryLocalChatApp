@@ -4,7 +4,7 @@ namespace FoundryLocalChatApp.Web.Services;
 
 public class IngestedChunk
 {
-    private const int VectorDimensions = 384; // 384 is the default vector size for the all-minilm embedding model
+    private const int VectorDimensions = 1024;
     private const string VectorDistanceFunction = DistanceFunction.CosineSimilarity;
 
     [VectorStoreKey]
@@ -20,5 +20,5 @@ public class IngestedChunk
     public required string Text { get; set; }
 
     [VectorStoreVector(VectorDimensions, DistanceFunction = VectorDistanceFunction)]
-    public string? Vector => Text;
+    public ReadOnlyMemory<float> Vector { get; set; } = new ReadOnlyMemory<float>(new float[VectorDimensions]);
 }

@@ -5,9 +5,15 @@ namespace FoundryLocalChatApp.Web.Services
 {
     public static class ChatOptionsMapper
     {
-        public static OpenAIChatClient.ChatSettings ToChatSettings(ChatOptions? options)
+        public record ExtendedChatSettings : OpenAIChatClient.ChatSettings
         {
-            var settings = new OpenAIChatClient.ChatSettings();
+            public ChatToolMode? ToolMode { get; set; }
+            public bool? AllowMultipleToolCalls { get; set; }
+        }
+
+        public static ExtendedChatSettings ToChatSettings(ChatOptions? options)
+        {
+            var settings = new ExtendedChatSettings();
             if (options is null) return settings;
 
             if (options.FrequencyPenalty.HasValue)
@@ -40,6 +46,8 @@ namespace FoundryLocalChatApp.Web.Services
             if (options.TopP.HasValue)
                 settings.TopP = options.TopP.Value;
 
+            settings.ToolMode = options.ToolMode;
+            settings.AllowMultipleToolCalls = options.AllowMultipleToolCalls;
             return settings;
         }
     }
