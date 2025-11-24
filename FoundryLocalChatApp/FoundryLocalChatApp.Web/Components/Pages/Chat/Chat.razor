@@ -52,6 +52,7 @@
     {
         messages.Add(new(ChatRole.System, SystemPrompt));
         chatOptions.Tools = [AIFunctionFactory.Create(SearchAsync)];
+        chatOptions.ToolMode = ChatToolMode.Auto;
         //chatOptions.MaxOutputTokens = CONTEXT_LENGTH;
         //chatOptions.Temperature = 0.7f;
     }
