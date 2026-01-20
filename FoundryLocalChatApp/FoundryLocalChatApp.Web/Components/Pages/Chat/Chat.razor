@@ -40,7 +40,7 @@
         Don't refer to the presence of citations; just emit these tags right at the end, with no surrounding text.
         ";
 
-    //private const int CONTEXT_LENGTH = 128 * 1024;
+    private const int CONTEXT_LENGTH = 16 * 1024;
     private readonly ChatOptions chatOptions = new();
     private readonly List<ChatMessage> messages = new();
     private CancellationTokenSource? currentResponseCancellation;
@@ -52,9 +52,8 @@
     {
         messages.Add(new(ChatRole.System, SystemPrompt));
         chatOptions.Tools = [AIFunctionFactory.Create(SearchAsync)];
-        chatOptions.ToolMode = ChatToolMode.Auto;
-        //chatOptions.MaxOutputTokens = CONTEXT_LENGTH;
-        //chatOptions.Temperature = 0.7f;
+        chatOptions.ToolMode = ChatToolMode.RequireAny;
+        chatOptions.MaxOutputTokens = CONTEXT_LENGTH;
     }
 
     private async Task AddUserMessageAsync(ChatMessage userMessage)
@@ -67,7 +66,7 @@
         await chatInput!.FocusAsync();
 
         // Stream and display a new response from the IChatClient
-        var responseText = new TextContent("");
+        var responseText = new TextContent(null);
         currentResponseMessage = new ChatMessage(ChatRole.Assistant, [responseText]);
         StateHasChanged();
         currentResponseCancellation = new();
@@ -75,10 +74,12 @@
         await foreach (var update in ChatClient.GetStreamingResponseAsync([.. messages], chatOptions, currentResponseCancellation.Token))
         {
             messages.AddMessages(update, filter: c => c is not TextContent);
-            //messages.AddMessages(update);
-            responseText.Text += update.Text;
-            ChatMessageItem.NotifyChanged(currentResponseMessage);
-            StateHasChanged(); // Update the UI with the new response text
+            if (update is not null && update.FinishReason != ChatFinishReason.ToolCalls)
+            {
+                responseText.Text += update.Text;
+                ChatMessageItem.NotifyChanged(currentResponseMessage);
+                StateHasChanged(); //Update the UI with the new response text
+            }
         }
 
         // Store the final response in the conversation, and begin getting suggestions
@@ -117,7 +118,7 @@
         [Description("If possible, specify the filename to search that file only. If not provided or empty, the search includes all files.")] string? filenameFilter = null)
     {
         await InvokeAsync(StateHasChanged);
-        var results = await Search.SearchAsync(searchPhrase, filenameFilter, maxResults: 5);
+        var results = await Search.SearchAsync(searchPhrase, filenameFilter, maxResults: 10);
         return results.Select(result =>
             $"<result filename=\"{result.DocumentId}\" page_number=\"{result.PageNumber}\">{result.Text}</result>");
     }

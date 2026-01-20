@@ -29,6 +29,10 @@ else if (Message.Role == ChatRole.Assistant)
                         <TextToSpeechButton Text="@text" />
                     }
                     <assistant-message markdown="@text"></assistant-message>
+                    @foreach (var citation in citations ?? [])
+                    {
+                        <ChatCitation File="@citation.File" PageNumber="@citation.Page" Quote="@citation.Quote" />
+                    }
                 </div>
             </div>
         }
@@ -55,7 +59,7 @@ else if (Message.Role == ChatRole.Assistant)
 
 @code {
     private static readonly ConditionalWeakTable<ChatMessage, ChatMessageItem> SubscribersLookup = new();
-    private static readonly Regex CitationRegex = new(@"<citation filename='(?<file>[^']*)' page_number='(?<page>\d*)'>(?<quote>.*?)</citation>", RegexOptions.NonBacktracking);
+    private static readonly Regex CitationRegex = new(@"<citation filename=['""](?<file>[^'""]*)['""] page_number=['""](?<page>\d*)['""]>(?<quote>.*?)</citation>", RegexOptions.NonBacktracking);
 
     private List<(string File, int? Page, string Quote)>? citations;
 

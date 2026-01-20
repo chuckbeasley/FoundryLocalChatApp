@@ -4,90 +4,67 @@ using FoundryLocalChatApp.Web.Services.Ingestion;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.AI;
 using Microsoft.SemanticKernel;
+using OpenAI;
+using System.ClientModel;
 
-// Move loggerFactory disposal to the end of Main to fix IDISP001
-using (ILoggerFactory loggerFactory = LoggerFactory.Create(lb => lb.AddConsole()))
+var alias = "qwen2.5-1.5b-instruct-generic-cpu:4";
+var manager = await FoundryLocalManager.StartModelAsync(aliasOrModelId: alias);
+
+var model = await manager.GetModelInfoAsync(aliasOrModelId: alias);
+ApiKeyCredential key = new ApiKeyCredential(manager.ApiKey);
+OpenAIClient client = new OpenAIClient(key, new OpenAIClientOptions
 {
-    var flLogger = loggerFactory.CreateLogger("FoundryLocalManager");
+    Endpoint = manager.Endpoint
+});
+var builder = WebApplication.CreateBuilder(args);
 
-    // Minimal configuration — change paths/URLs as needed for your environment
-    var config = new Configuration
+//IKernelBuilder kernelBuilder = Kernel.CreateBuilder();
+var onnxModelPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "Models", "bge-large-en-v1.5", "onnx", "model.onnx");
+var onnxVocabPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "Models", "bge-large-en-v1.5", "vocab.txt");
+builder.Logging.AddConsole();
+builder.AddServiceDefaults();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents(options =>
     {
-        AppName = "FoundryLocalChatApp", // Fix: set required property
-        // example: keep cached models under local app data
-        ModelCacheDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".foundry\\cache\\models")
-        // If you need the built-in web service, populate config.Web (see package docs)
-    };
-    // Create the singleton manager
-    await FoundryLocalManager.CreateAsync(config, flLogger);
-
-    // Get the singleton instance
-    var manager = FoundryLocalManager.Instance;
-    var catalog = await manager.GetCatalogAsync();
-    Model? model = await catalog.GetModelAsync("phi-4-mini");
-    if (model is null)
-    {
-        throw new InvalidOperationException("Model 'phi-4-mini' not found in catalog.");
-    }
-    await model.LoadAsync();
-    OpenAIChatClient chatClient = await model.GetChatClientAsync();
-    var builder = WebApplication.CreateBuilder(args);
-
-    //IKernelBuilder kernelBuilder = Kernel.CreateBuilder();
-    var onnxModelPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "Models", "bge-large-en-v1.5", "onnx", "model.onnx");
-    var onnxVocabPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "Models", "bge-large-en-v1.5", "vocab.txt");
-    builder.Logging.AddConsole();
-    builder.AddServiceDefaults();
-    builder.Services.AddRazorComponents()
-        .AddInteractiveServerComponents(options =>
-        {
-            options.DetailedErrors = true;
-        });
-    builder.Services.AddSpeechRecognitionServices();
-    builder.Services.AddSpeechSynthesisServices();
-    builder.Services.AddMemoryCache();
-    builder.Services.AddBertOnnxEmbeddingGenerator(onnxModelPath, onnxVocabPath);
-
-    // register the adapter that implements IChatClient
-    builder.Services.AddSingleton<IChatClient>(sp =>
-    {
-        // Base adapter around the Foundry OpenAIChatClient
-        using var adapter = new OpenAIChatClientAdapter(chatClient, flLogger);
-
-        var functionInvoker = new FunctionInvokingChatClient(adapter, loggerFactory, sp);
-        return functionInvoker;
+        options.DetailedErrors = true;
     });
-    builder.AddQdrantClient("vectordb");
-    builder.Services.AddQdrantCollection<Guid, IngestedChunk>("data-blazorchat-chunks");
-    builder.Services.AddQdrantCollection<Guid, IngestedDocument>("data-blazorchat-documents");
-    builder.Services.AddScoped<DataIngestor>();
-    builder.Services.AddSingleton<SemanticSearch>();
-    var app = builder.Build();
+builder.Services.AddSpeechRecognitionServices();
+builder.Services.AddSpeechSynthesisServices();
+builder.Services.AddMemoryCache();
+builder.Services.AddBertOnnxEmbeddingGenerator(onnxModelPath, onnxVocabPath);
+builder.Services.AddChatClient(client.GetChatClient(model?.ModelId).AsIChatClient().AsBuilder().UseFunctionInvocation().Build());
+//builder.Services.AddChatClient(chatClient).UseFunctionInvocation();
+builder.AddQdrantClient("vectordb");
+builder.Services.AddQdrantCollection<Guid, IngestedChunk>("data-blazorchat-chunks");
+builder.Services.AddQdrantCollection<Guid, IngestedDocument>("data-blazorchat-documents");
+builder.Services.AddScoped<DataIngestor>();
+builder.Services.AddSingleton<SemanticSearch>();
+    
+var app = builder.Build();
 
-    app.MapDefaultEndpoints();
+app.MapDefaultEndpoints();
 
-    // Configure the HTTP request pipeline.
-    if (!app.Environment.IsDevelopment())
-    {
-        app.UseExceptionHandler("/Error", createScopeForErrors: true);
-        // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-        app.UseHsts();
-    }
-
-    app.UseHttpsRedirection();
-    app.UseAntiforgery();
-
-    app.UseStaticFiles();
-    app.MapRazorComponents<App>()
-        .AddInteractiveServerRenderMode();
-
-    // Find the registered embedding generator service
-    var embeddingGenerator = app.Services.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
-
-    await DataIngestor.IngestDataAsync(
-        app.Services,
-        new PDFDirectorySource(
-            Path.Combine(builder.Environment.WebRootPath, "Data"),
-            embeddingGenerator));
-    app.Run();
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
 }
+
+app.UseHttpsRedirection();
+app.UseAntiforgery();
+
+app.UseStaticFiles();
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
+// Find the registered embedding generator service
+var embeddingGenerator = app.Services.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+
+await DataIngestor.IngestDataAsync(
+    app.Services,
+    new PDFDirectorySource(
+        Path.Combine(builder.Environment.WebRootPath, "Data"),
+        embeddingGenerator));
+app.Run();
