@@ -16,6 +16,7 @@ A modern Blazor-based AI Chat application that enables users to chat with a loca
 - [Dependencies](#dependencies)
 - [Contributing](#contributing)
 - [License](#license)
+- [Troubleshooting](#troubleshooting)
 
 ## Overview
 
